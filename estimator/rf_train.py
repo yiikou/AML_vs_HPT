@@ -39,65 +39,38 @@ def load_data(download_url,split_random_seeds):
     y_train.values.flatten()
     return x_train, x_test, y_train, y_test
 
-def load_outer_parameter(run):
+def load_outer_parameter():
     parser = argparse.ArgumentParser()
     parser.add_argument('--split-random-seeds', type=int, dest = 'split_random_seeds', help='Seed')
     parser.add_argument('--data-download-url', type=str, dest = 'data_download_url', help='Url')
     parser.add_argument('--dataset-name', type=str, dest = 'dataset_name', help='dataset_name')
     parser.add_argument('--output_dir', type=str, dest = 'output_dir', help='output_dir')
 
-    parser.add_argument('--max-depth', type=int, dest = 'max_depth', help='max_depth')
-    parser.add_argument('--eta', type=float, dest = 'eta', help='eta')
-    parser.add_argument('--subsample', type=float, dest = 'subsample', help='silent')
-    parser.add_argument('--colsample_bytree', type=float, dest = 'colsample_bytree', help='colsample_bytree')
-    parser.add_argument('--gamma', type=float, dest = 'gamma', help='gamma')
-    parser.add_argument('--min_child_weight', type=int, dest = 'min_child_weight', help='min_child_weight')
-    parser.add_argument('--n_estimators', type=int, dest = 'n_estimators', help='n_estimators')
-    #run.log("check point 1", str(1))
-
+    parser.add_argument('--mtry', type=int, dest = 'mtry', help='max_depth')
+       
     aargs = parser.parse_args()
-    #run.log("check point 1", str(2))
     return aargs
 
 def load_hyperparameter(aargs):
     
-    xgb_param = {'max_depth':aargs.max_depth
-                 , 'eta':aargs.eta 
-                 , 'silent':1
-                 #, 'learning_rate':aargs.learning_rate
-                 ,'subsample':aargs.subsample
-                 ,'colsample_bytree':aargs.colsample_bytree
-                 ,'gamma':aargs.gamma
-                 ,'min_child_weight':aargs.min_child_weight
-                 ,'n_estimators' :aargs.n_estimators
-                 }
+    param = {'max_features':aargs.mtry}
     
-    #run.log_row(name = 'Hyper parameter',
-    #    max_depth=aargs.max_depth,
-    #    learning_rate=aargs.learning_rate,
-    #    subsample=aargs.subsample,
-    #    colsample_bytree=aargs.colsample_bytree,
-    #    gamma=aargs.gamma
-    #)
-    #
-    #run.log('max_depth',np.int(aargs.max_depth))
-    #run.log('learning_rate',np.float(aargs.learning_rate))
-    #run.log('subsample',np.float(aargs.subsample))
-    #run.log('colsample_bytree',np.float(aargs.colsample_bytree))
-    #run.log('gamma',np.float(aargs.gamma))
-    return xgb_param
+    run.log_row(name = 'Hyper parameter',
+        mtry=aargs.mtry
+    )
+    
+    run.log('mtry',np.int(aargs.mtry))
+    return param
 
 def setup_model(hyper_param,run):
-    import xgboost as xgb
-    clf = xgb.XGBClassifier(objective = 'binary:logistic',**hyper_param)
-    
-    run.log("xgboost version", xgb.__version__)
-    
+    from sklearn.ensemble import RandomForestClassifier
+    clf = RandomForestClassifier(random_state=0
+                                ,**hyper_param)
     return clf
 
 def main():
     
-    aargs = load_outer_parameter(run)
+    aargs = load_outer_parameter()
 
     data_local_path= download_data(aargs.data_download_url,aargs.dataset_name)
     
@@ -124,8 +97,7 @@ def main():
     print('auc_weighted is : '+ str(mean(auc_weighted_all)))
     run.log("auc_weighted", mean(auc_weighted_all))
     
-    final_model =clf.fit(x_train, y_train.values.flatten(),
-            verbose=True    )
+    final_model =clf.fit(x_train, y_train.values.flatten())
     
     os.makedirs(aargs.output_dir, exist_ok=True)
     model_path_name = os.path.join(aargs.output_dir, 'model.pkl')
